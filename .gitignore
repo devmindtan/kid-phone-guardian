@@ -1,0 +1,18 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Dữ liệu bí mật (URL webhook)
+devices.json
+
+# Env / Vercel
+.env
+.env.*
+.vercel/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store

@@ -36,3 +36,11 @@ Mở `http://localhost:8000`.
 - Dữ liệu nằm trong `devices.json` cạnh `app.py` (dễ sao lưu/chỉnh sửa thủ công khi cần).
 - URL webhook là bí mật: ai có link có thể kích hoạt. Không commit/chia sẻ `devices.json` hay URL công khai.
 - Máy chạy server phải truy cập được URL webhook của MacroDroid.
+
+## Deploy lên Vercel
+
+1. Import repo vào Vercel (cấu hình sẵn trong `vercel.json`, không cần build command).
+2. Vercel không cho ghi file, nên cần kho lưu trữ: vào **Storage → Marketplace → Upstash (Redis)**, tạo DB và
+   **Connect** vào project. Vercel sẽ tự thêm `KV_REST_API_URL` và `KV_REST_API_TOKEN`
+   (hoặc tự đặt `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`).
+3. Redeploy. Có hai biến này app dùng Redis; không có thì dùng `devices.json` (chạy local).
