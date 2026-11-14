@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Điều khiển từ xa</title>
+  <style>
+    :root {
+      --bg: #f6f3ec;
+      --ink: #1c2420;
+      --muted: #5c665f;
+      --card: #fffdf8;
+      --line: #d8d2c5;
+      --accent: #1f6f5b;
+      --accent-ink: #f7fff9;
+      --danger: #8f3a2b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 100% -10%, #dce8de 0%, transparent 60%),
+        var(--bg);
+      line-height: 1.45;
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 28px 18px 48px;
+    }
+    h1 {
+      font-size: clamp(2rem, 6vw, 3rem);
+      line-height: 1.05;
+      margin: 0 0 8px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .lead { color: var(--muted); margin: 0 0 24px; max-width: 42ch; }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 18px;
+    }
+    label { display: block; font-size: 0.95rem; margin: 0 0 6px; }
+    input {
+      width: 100%;
+      padding: 12px 13px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font: inherit;
+      background: #fff;
+      color: var(--ink);
+      margin-bottom: 12px;
+    }
+    input:focus, button:focus {
+      outline: 3px solid #b7d8cd;
+      outline-offset: 1px;
+    }
+    .row { display: grid; gap: 12px; grid-template-columns: 1fr; }
+    @media (min-width: 640px) { .row { grid-template-columns: 1fr 1fr; } }
+    button {
+      font: inherit;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .add {
+      background: var(--ink);
+      color: #fff;
+      padding: 12px 16px;
+      width: 100%;
+    }
+    .devices { display: grid; gap: 12px; }
+    .device {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .device h2 {
+      font-size: 1.25rem;
+      margin: 0 0 4px;
+      font-weight: 600;
+    }
+    .url {
+      color: var(--muted);
+      font-size: 0.9rem;
+      word-break: break-all;
+      margin: 0 0 14px;
+    }
+    .actions { display: flex; gap: 10px; align-items: stretch; }
+    .trigger {
+      flex: 1;
+      background: var(--accent);
+      color: var(--accent-ink);
+      padding: 16px;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .trigger[aria-busy="true"] { opacity: 0.7; }
+    .remove {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid #e3c9c4;
+      padding: 0 14px;
+    }
+    .status {
+      min-height: 1.4em;
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .status.ok { color: var(--accent); }
+    .status.err { color: var(--danger); }
+    .empty { color: var(--muted); margin: 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Thiết bị cần nhắc</h1>
+    <p class="lead">Lưu webhook MacroDroid cho từng thiết bị vào máy chủ. Nhấn nút để gửi tín hiệu kích hoạt.</p>
+
+    <section class="panel" aria-label="Thêm thiết bị">
+      <form id="form">
+        <div class="row">
+          <div>
+            <label for="name">Tên thiết bị</label>
+            <input id="name" name="name" required placeholder="Ví dụ: Máy của bé">
+          </div>
+          <div>
+            <label for="url">URL webhook</label>
+            <input id="url" name="url" required type="url" placeholder="https://...">
+          </div>
+        </div>
+        <button class="add" type="submit">Lưu thiết bị</button>
+      </form>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section id="devices" class="devices" aria-label="Danh sách thiết bị"></section>
+  </main>
+
+  <script>
+    const form = document.getElementById("form");
+    const list = document.getElementById("devices");
+    const status = document.getElementById("status");
+    let devices = [];
+
+    function setStatus(msg, kind = "") {
+      status.textContent = msg;
+      status.className = "status" + (kind ? " " + kind : "");
+    }
+
+    async function api(path, options = {}) {
+      const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
+      if (!r.ok) {
+        let detail = "Có lỗi xảy ra.";
+        try { detail = (await r.json()).detail || detail; } catch {}
+        throw new Error(detail);
+      }
+      return r.status === 204 ? null : r.json();
+    }
+
+    async function load() {
+      devices = await api("/api/devices");
+      render();
+    }
+
+    function render() {
+      if (!devices.length) {
+        list.innerHTML = '<p class="empty">Chưa có thiết bị nào. Thêm webhook ở phía trên.</p>';
+        return;
+      }
+      list.innerHTML = devices.map((d) => `
+        <article class="device">
+          <h2>${escapeHtml(d.name)}</h2>
+          <p class="url">${escapeHtml(d.url)}</p>
+          <div class="actions">
+            <button class="trigger" data-id="${escapeAttr(d.id)}" data-name="${escapeAttr(d.name)}">Kích hoạt</button>
+            <button class="remove" data-remove="${escapeAttr(d.id)}" aria-label="Xóa ${escapeAttr(d.name)}">Xóa</button>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function escapeAttr(s) { return escapeHtml(s).replace(/"/g, "&quot;"); }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = form.name.value.trim();
+      const url = form.url.value.trim();
+      if (!name || !url) return;
+      try {
+        await api("/api/devices", { method: "POST", body: JSON.stringify({ name, url }) });
+        form.reset();
+        setStatus("Đã lưu thiết bị.", "ok");
+        await load();
+      } catch (err) {
+        setStatus(err.message, "err");
+      }
+    });
+
+    list.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      if (btn.dataset.remove) {
+        try {
+          await api(`/api/devices/${btn.dataset.remove}`, { method: "DELETE" });
+          setStatus("Đã xóa thiết bị.");
+          await load();
+        } catch (err) { setStatus(err.message, "err"); }
+        return;
+      }
+      if (btn.dataset.id) {
+        btn.setAttribute("aria-busy", "true");
+        setStatus(`Đang gửi tín hiệu tới "${btn.dataset.name}"...`);
+        try {
+          const res = await api(`/api/devices/${btn.dataset.id}/trigger`, { method: "POST" });
+          setStatus(`Đã kích hoạt "${res.name}" (HTTP ${res.status_code}).`, "ok");
+        } catch (err) {
+          setStatus(err.message, "err");
+        } finally {
+          btn.removeAttribute("aria-busy");
+        }
+      }
+    });
+
+    load().catch((err) => setStatus(err.message, "err"));
+  </script>
+</body>
+</html>
