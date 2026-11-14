@@ -44,3 +44,12 @@ Mở `http://localhost:8000`.
    **Connect** vào project. Vercel sẽ tự thêm `KV_REST_API_URL` và `KV_REST_API_TOKEN`
    (hoặc tự đặt `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`).
 3. Redeploy. Có hai biến này app dùng Redis; không có thì dùng `devices.json` (chạy local).
+
+## Chỉ cho máy đã ghép truy cập
+
+1. Vercel → Project → **Settings → Environment Variables**: thêm `PAIR_KEY` = một chuỗi dài ngẫu nhiên
+   (tạo bằng `python3 -c "import secrets; print(secrets.token_urlsafe(32))"`), rồi **Redeploy**.
+2. Trên mỗi máy được phép, mở một lần: `https://<tên-app>.vercel.app/pair?key=<PAIR_KEY>`.
+   Máy được ghi nhớ bằng cookie (10 năm); máy khác thấy trang "chưa được ghép".
+3. Thu hồi tất cả: đổi `PAIR_KEY` rồi Redeploy, sau đó ghép lại các máy muốn giữ.
+   Xóa cookie/dữ liệu trình duyệt hoặc dùng tab ẩn danh thì phải ghép lại.

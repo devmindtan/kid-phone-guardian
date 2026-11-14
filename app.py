@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import json
 import os
 import uuid
@@ -5,8 +7,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 BASE = Path(__file__).parent
@@ -14,6 +16,44 @@ DATA = BASE / "devices.json"
 INDEX = BASE / "index.html"
 
 app = FastAPI(title="Kid Phone Guardian")
+
+# Chỉ máy đã ghép mới vào được: đặt PAIR_KEY trên Vercel, mở /pair?key=<PAIR_KEY> một lần trên mỗi máy.
+# Đổi PAIR_KEY = thu hồi mọi máy đã ghép. Không đặt PAIR_KEY (chạy local) = không khóa.
+PAIR_KEY = os.getenv("PAIR_KEY", "")
+COOKIE = "kpg_device"
+COOKIE_AGE = 10 * 365 * 24 * 3600
+
+
+def _device_token() -> str:
+    return hmac.new(PAIR_KEY.encode(), b"paired-device", hashlib.sha256).hexdigest()
+
+
+def _is_paired(request: Request) -> bool:
+    return hmac.compare_digest(request.cookies.get(COOKIE, ""), _device_token())
+
+
+@app.middleware("http")
+async def require_paired_device(request: Request, call_next):
+    if not PAIR_KEY or request.url.path == "/pair" or _is_paired(request):
+        return await call_next(request)
+    if request.url.path.startswith("/api/"):
+        return HTMLResponse('{"detail":"Thiết bị chưa được ghép"}', status_code=403, media_type="application/json")
+    return HTMLResponse(
+        "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"
+        "<title>Không có quyền</title><body style='font-family:sans-serif;padding:24px'>"
+        "<h2>Thiết bị này chưa được ghép</h2><p>Mở link ghép một lần trên máy này để truy cập.</p>",
+        status_code=403,
+    )
+
+
+@app.get("/pair")
+def pair(request: Request, key: str = ""):
+    if not PAIR_KEY or not hmac.compare_digest(key, PAIR_KEY):
+        raise HTTPException(status_code=403, detail="Mã ghép không đúng")
+    resp = RedirectResponse("/", status_code=303)
+    https = request.headers.get("x-forwarded-proto", request.url.scheme) == "https"
+    resp.set_cookie(COOKIE, _device_token(), max_age=COOKIE_AGE, httponly=True, secure=https, samesite="lax")
+    return resp
 
 
 class DeviceIn(BaseModel):

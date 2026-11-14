@@ -57,7 +57,9 @@
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      font-size: .9rem;
+      margin: 0;
+      font-family: inherit;
+      font-size: .95rem;
       font-weight: 700;
       color: var(--teal);
       letter-spacing: .02em;
@@ -73,20 +75,6 @@
       box-shadow: 0 6px 14px -8px rgba(15, 118, 110, .9);
     }
     .brand-mark svg { width: 20px; height: 20px; }
-    h1 {
-      margin: 20px 0 10px;
-      font-family: var(--display);
-      font-size: clamp(2.1rem, 4.8vw, 3.3rem);
-      font-weight: 700;
-      line-height: 1.02;
-      letter-spacing: -0.035em;
-    }
-    .lead {
-      margin: 0;
-      max-width: 46ch;
-      color: var(--muted);
-      font-size: 1rem;
-    }
     .count-chip {
       display: inline-flex;
       align-items: center;
@@ -365,7 +353,6 @@
 
     @media (max-width: 640px) {
       main { padding-top: 26px; }
-      .hero { flex-direction: column; gap: 16px; }
       .list-head { flex-direction: column; gap: 4px; }
       .actions { flex-direction: column; }
       .remove { padding: 11px 14px; }
@@ -375,21 +362,17 @@
 <body>
   <main>
     <header class="hero">
-      <div class="hero-copy">
-        <div class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="8" y="2.5" width="10" height="19" rx="2.5"></rect>
-              <path d="M11.5 18.5h3"></path>
-              <path d="M5 7.5a7 7 0 0 1 0 9"></path>
-              <path d="M2.5 5a11 11 0 0 1 0 14"></path>
-            </svg>
-          </span>
-          <span>Tín hiệu nhà</span>
-        </div>
-        <h1>Bấm một nút.<br>Bé tạm dừng xem.</h1>
-        <p class="lead">Lưu webhook MacroDroid cho từng thiết bị, rồi kích hoạt khi cần nhắc bé cất điện thoại.</p>
-      </div>
+      <h1 class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="8" y="2.5" width="10" height="19" rx="2.5"></rect>
+            <path d="M11.5 18.5h3"></path>
+            <path d="M5 7.5a7 7 0 0 1 0 9"></path>
+            <path d="M2.5 5a11 11 0 0 1 0 14"></path>
+          </svg>
+        </span>
+        <span>Tín hiệu nhà</span>
+      </h1>
       <div class="hero-side">
         <span class="count-chip" id="count">0 thiết bị</span>
       </div>
