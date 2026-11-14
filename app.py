@@ -63,8 +63,19 @@ class DeviceIn(BaseModel):
 
 # Trên Vercel hệ thống file chỉ đọc -> lưu vào Upstash Redis (Vercel KV) nếu có biến môi trường.
 # Chạy local không có biến này thì dùng devices.json như cũ.
-REDIS_URL = os.getenv("KV_REST_API_URL") or os.getenv("UPSTASH_REDIS_REST_URL")
-REDIS_TOKEN = os.getenv("KV_REST_API_TOKEN") or os.getenv("UPSTASH_REDIS_REST_TOKEN")
+def _env_suffix(*suffixes: str) -> str | None:
+    # Nhận cả biến có tiền tố tùy ý do Vercel tạo, vd STORAGE_KV_REST_API_URL
+    for suffix in suffixes:
+        if os.getenv(suffix):
+            return os.getenv(suffix)
+        for k, v in os.environ.items():
+            if k.endswith("_" + suffix) and v:
+                return v
+    return None
+
+
+REDIS_URL = _env_suffix("KV_REST_API_URL", "UPSTASH_REDIS_REST_URL")
+REDIS_TOKEN = _env_suffix("KV_REST_API_TOKEN", "UPSTASH_REDIS_REST_TOKEN")
 REDIS_KEY = "kid-phone-guardian:devices"
 
 
